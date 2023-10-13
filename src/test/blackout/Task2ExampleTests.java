@@ -192,4 +192,5 @@ public class Task2ExampleTests {
         // Verify that Satellite1 is now at theta=0
         assertTrue(controller.getInfo("Satellite1").getPosition().toDegrees() % 360 == 0);
     }
+
 }

@@ -87,4 +87,27 @@ public class Task1ExampleTests {
                 new EntityInfoResponse("DeviceC", Angle.fromDegrees(330), RADIUS_OF_JUPITER, "DesktopDevice", expected),
                 controller.getInfo("DeviceC"));
     }
+
+    @Test
+    public void testCreateDifferentTypesOfEntities() {
+        BlackoutController controller = new BlackoutController();
+
+        // Create different types of satellites and devices
+        controller.createSatellite("Satellite1", "StandardSatellite", 1000 + RADIUS_OF_JUPITER, Angle.fromDegrees(320));
+        controller.createSatellite("Satellite2", "TeleportingSatellite", 2000 + RADIUS_OF_JUPITER,
+                Angle.fromDegrees(315));
+        controller.createSatellite("Satellite3", "RelaySatellite", 3000 + RADIUS_OF_JUPITER, Angle.fromDegrees(310));
+        controller.createDevice("DeviceA", "HandheldDevice", Angle.fromDegrees(30));
+        controller.createDevice("DeviceB", "LaptopDevice", Angle.fromDegrees(180));
+        controller.createDevice("DeviceC", "DesktopDevice", Angle.fromDegrees(330));
+
+        // Check the types of the created entities
+        assertEquals("StandardSatellite", controller.getInfo("Satellite1").getType());
+        assertEquals("TeleportingSatellite", controller.getInfo("Satellite2").getType());
+        assertEquals("RelaySatellite", controller.getInfo("Satellite3").getType());
+        assertEquals("HandheldDevice", controller.getInfo("DeviceA").getType());
+        assertEquals("LaptopDevice", controller.getInfo("DeviceB").getType());
+        assertEquals("DesktopDevice", controller.getInfo("DeviceC").getType());
+    }
+
 }

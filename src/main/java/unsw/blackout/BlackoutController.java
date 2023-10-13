@@ -2,14 +2,14 @@ package unsw.blackout;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.management.relation.RelationException;
-
-import unsw.response.models.EntityInfoResponse;
-import unsw.response.models.FileInfoResponse;
+import unsw.blackout.FileTransferException.*;
+import unsw.blackout.devices.*;
+import unsw.blackout.satellites.*;
+import unsw.blackout.superclasses.*;
+import unsw.response.models.*;
 import unsw.utils.Angle;
 
 import static unsw.utils.MathsHelper.RADIUS_OF_JUPITER;
@@ -25,7 +25,15 @@ public class BlackoutController {
     public List<Device> devices = new ArrayList<Device>();
     // List to store all satellites
     public List<Satellite> satellites = new ArrayList<Satellite>();
+    // List to store all files
+    List<File> files = new ArrayList<File>();
 
+    /**
+     * create a Device
+     * @param deviceId
+     * @param type
+     * @param position
+     */
     public void createDevice(String deviceId, String type, Angle position) {
         // Initialise new device as null
         Device newDevice = null;
@@ -43,6 +51,10 @@ public class BlackoutController {
         }
     }
 
+    /**
+     * remove a device
+     * @param deviceId
+     */
     public void removeDevice(String deviceId) {
         for (Device device : devices) {
             String device_Id = device.getDeviceId();
@@ -53,6 +65,13 @@ public class BlackoutController {
         }
     }
 
+    /**
+     * create a satellite
+     * @param satelliteId
+     * @param type
+     * @param height
+     * @param position
+     */
     public void createSatellite(String satelliteId, String type, double height, Angle position) {
         Satellite newSatellite = null;
 
@@ -69,6 +88,10 @@ public class BlackoutController {
         }
     }
 
+    /**
+     * remove a satellite
+     * @param satelliteId
+     */
     public void removeSatellite(String satelliteId) {
         for (Satellite satellite : satellites) {
             String currId = satellite.getSatelliteId();
@@ -79,6 +102,10 @@ public class BlackoutController {
         }
     }
 
+    /**
+     * list device ids
+     * @return list of devices ids
+     */
     public List<String> listDeviceIds() {
         List<String> deviceIds = new ArrayList<String>();
 
@@ -88,6 +115,10 @@ public class BlackoutController {
         return deviceIds;
     }
 
+    /**
+     * list satellite ids
+     * @return list of satellite ids
+     */
     public List<String> listSatelliteIds() {
         List<String> satelliteIds = new ArrayList<String>();
 
@@ -97,6 +128,12 @@ public class BlackoutController {
         return satelliteIds;
     }
 
+    /**
+     * add file to device
+     * @param deviceId
+     * @param filename
+     * @param content
+     */
     public void addFileToDevice(String deviceId, String filename, String content) {
         for (Device device : devices) {
             String device_Id = device.getDeviceId();
@@ -107,6 +144,11 @@ public class BlackoutController {
         }
     }
 
+    /**
+     * get information of an entity
+     * @param id
+     * @return entity info
+     */
     public EntityInfoResponse getInfo(String id) {
         EntityInfoResponse info = null;
 
@@ -134,8 +176,13 @@ public class BlackoutController {
         return info;
     }
 
+    /**
+     * simulate movement of satellite
+     */
     public void simulate() {
-        // TODO: Task 2a)
+        for (Satellite satellite : satellites) {
+            satellite.move();
+        }
     }
 
     /**
@@ -148,13 +195,197 @@ public class BlackoutController {
         }
     }
 
+    /**
+     * get communicable entities in range of a given entity
+     * @param id
+     * @return list of communicable entities
+     */
     public List<String> communicableEntitiesInRange(String id) {
-        // TODO: Task 2 b)
-        return new ArrayList<>();
+        List<String> entitiesInRange = new ArrayList<String>();
+        Boolean isSatellite = false;
+
+        for (Satellite satellite : satellites) {
+            if (satellite.getSatelliteId().equals(id)) {
+                isSatellite = true;
+                satellite.communicableEntitiesInRange(entitiesInRange, satellites, devices);
+                break;
+            }
+        }
+
+        if (isSatellite == false) {
+
+            for (Device device : devices) {
+                if (device.getDeviceId().equals(id)) {
+                    device.communicableEntitiesInRange(entitiesInRange, satellites, devices);
+                    break;
+                }
+            }
+        }
+
+        return entitiesInRange;
     }
 
+    /**
+     * send file from an entity to another
+     * @param fileName
+     * @param fromId
+     * @param toId
+     * @throws FileTransferException
+     */
     public void sendFile(String fileName, String fromId, String toId) throws FileTransferException {
-        // TODO: Task 2 c)
+        List<String> entitiesInRange = communicableEntitiesInRange(fromId);
+        if (!entitiesInRange.contains(toId)) {
+            return;
+        }
+
+        EntityInfoResponse senderInfo = getInfo(fromId);
+        EntityInfoResponse receiverInfo = getInfo(toId);
+
+        if (senderInfo.getType().contains("Device")) {
+            Device sender = new Device();
+            for (Device device : devices) {
+                if (device.getDeviceId().equals(senderInfo.getDeviceId())) {
+                    sender = device;
+                    break;
+                }
+            }
+
+            if (receiverInfo.getType().contains("Device") || (senderInfo.getType().equals("DesktopDevice")
+                    && receiverInfo.getType().equals("StandardSatellite"))) {
+                return;
+            }
+
+            Satellite receiver = new StandardSatellite();
+            for (Satellite satellite : satellites) {
+                if (satellite.getSatelliteId().equals(receiverInfo.getDeviceId())) {
+                    receiver = satellite;
+                    break;
+                }
+            }
+
+            List<File> files = sender.getFiles();
+            File sentFile = new File();
+            for (File file : files) {
+                if (file.getFileName().equals(fileName)) {
+                    sentFile = file;
+                    break;
+                }
+            }
+
+            if (sentFile.equals(new File()) || !sentFile.isFileComplete()) {
+                throw new VirtualFileNotFoundException(fileName);
+            }
+
+            List<File> receiversfiles = receiver.getFiles();
+            for (File file : files) {
+                if (file.getFileName().equals(fileName)) {
+                    throw new VirtualFileAlreadyExistsException(fileName);
+                }
+            }
+
+            if (receiver.getByteStorageUsed() + sentFile.getFileSize() >= receiver.getByteStorageSize()) {
+                throw new VirtualFileNoStorageSpaceException("File Size Exceeds Max Storage");
+            }
+
+            if (receiver.getFiles().size() == receiver.getMaxFiles()) {
+                throw new VirtualFileNoStorageSpaceException("Max Number Of Files Reached");
+            }
+
+            File newFile = new File(sentFile.getFileName(), sentFile.getContent(), sentFile.getFileSize(),
+                    senderInfo.getDeviceId(), receiverInfo.getDeviceId(), sentFile.getProgress(), false);
+            receiversfiles.add(newFile);
+            receiver.setFiles(receiversfiles);
+            files.add(newFile);
+
+        } else if (senderInfo.getType().contains("Satellite")) {
+            if (receiverInfo.getType().contains("Device")) {
+                if (receiverInfo.getType().equals("DesktopDevice")
+                        && senderInfo.getType().equals("StandardSatellite")) {
+                    return;
+                }
+
+                Satellite sender = new StandardSatellite();
+                for (Satellite satellite : satellites) {
+                    if (satellite.getSatelliteId().equals(senderInfo.getDeviceId())) {
+                        sender = satellite;
+                        break;
+                    }
+                }
+
+                Device receiver = new Device();
+                for (Device device : devices) {
+                    if (device.getDeviceId().equals(receiverInfo.getDeviceId())) {
+                        receiver = device;
+                        break;
+                    }
+                }
+
+                List<File> sendersFiles = sender.getFiles();
+                File sentFile = new File();
+                for (File file : files) {
+                    if (file.getFileName().equals(fileName)) {
+                        sentFile = file;
+                        break;
+                    }
+                }
+
+                File newFile = new File(sentFile.getFileName(), sentFile.getContent(), sentFile.getFileSize(),
+                        senderInfo.getDeviceId(), receiverInfo.getDeviceId(), sentFile.getProgress(), false);
+                sendersFiles.add(newFile);
+                receiver.setFiles(sendersFiles);
+                files.add(newFile);
+            } else if (receiverInfo.getType().contains("Satellite")) {
+                Satellite sender = new StandardSatellite();
+                for (Satellite satellite : satellites) {
+                    if (satellite.getSatelliteId().equals(senderInfo.getDeviceId())) {
+                        sender = satellite;
+                        break;
+                    }
+                }
+
+                Satellite receiver = new StandardSatellite();
+                for (Satellite satellite : satellites) {
+                    if (satellite.getSatelliteId().equals(receiverInfo.getDeviceId())) {
+                        receiver = satellite;
+                        break;
+                    }
+                }
+
+                List<File> sendersFiles = sender.getFiles();
+                File sentFile = new File();
+                for (File file : files) {
+                    if (file.getFileName().equals(fileName)) {
+                        sentFile = file;
+                        break;
+                    }
+                }
+
+                if (sentFile.equals(new File()) || !sentFile.isFileComplete()) {
+                    throw new VirtualFileNotFoundException(fileName);
+                }
+
+                List<File> receiversfiles = receiver.getFiles();
+                for (File file : files) {
+                    if (file.getFileName().equals(fileName)) {
+                        throw new VirtualFileAlreadyExistsException(fileName);
+                    }
+                }
+
+                if (receiver.getByteStorageSize() + sentFile.getFileSize() >= receiver.getByteStorageSize()) {
+                    throw new VirtualFileNoStorageSpaceException("File Size Exceeds Max Storage");
+                }
+
+                if (receiver.getFiles().size() == receiver.getMaxFiles()) {
+                    throw new VirtualFileNoStorageSpaceException("Max Number Of Files Reached");
+                }
+
+                File newFile = new File(sentFile.getFileName(), sentFile.getContent(), sentFile.getFileSize(),
+                        senderInfo.getDeviceId(), receiverInfo.getDeviceId(), sentFile.getProgress(), false);
+                receiversfiles.add(newFile);
+                receiver.setFiles(receiversfiles);
+                files.add(newFile);
+            }
+        }
     }
 
     public void createDevice(String deviceId, String type, Angle position, boolean isMoving) {

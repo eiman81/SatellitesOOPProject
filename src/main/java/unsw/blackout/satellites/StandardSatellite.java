@@ -1,10 +1,6 @@
 package unsw.blackout.satellites;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import unsw.blackout.superclasses.Satellite;
-import unsw.response.models.EntityInfoResponse;
 import unsw.utils.Angle;
 
 public class StandardSatellite extends Satellite {

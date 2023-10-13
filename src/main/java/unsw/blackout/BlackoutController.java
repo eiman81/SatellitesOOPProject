@@ -22,11 +22,11 @@ import static unsw.utils.MathsHelper.RADIUS_OF_JUPITER;
  */
 public class BlackoutController {
     // List to store all devices
-    public List<Device> devices = new ArrayList<Device>();
+    private List<Device> devices = new ArrayList<Device>();
     // List to store all satellites
-    public List<Satellite> satellites = new ArrayList<Satellite>();
+    private List<Satellite> satellites = new ArrayList<Satellite>();
     // List to store all files
-    List<File> files = new ArrayList<File>();
+    private List<File> files = new ArrayList<File>();
 
     /**
      * create a Device

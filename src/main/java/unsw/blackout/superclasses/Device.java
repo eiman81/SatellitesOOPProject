@@ -2,10 +2,6 @@ package unsw.blackout.superclasses;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.w3c.dom.ranges.Range;
-
-import unsw.response.models.EntityInfoResponse;
 import unsw.utils.Angle;
 import unsw.utils.MathsHelper;
 
